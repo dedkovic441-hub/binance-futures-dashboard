@@ -1,0 +1,6 @@
+state/
+push.log
+push.pid
+*.tmp
+__pycache__/
+.DS_Store

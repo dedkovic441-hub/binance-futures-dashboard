@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Binance Futures Paper Bot</title>
+<style>
+:root{--bg:#0b0f14;--card:#141a22;--line:#222b36;--tx:#e6edf3;--mut:#8b98a5;--g:#22c55e;--r:#ef4444;--a:#f59e0b;--acc:#3b82f6}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:12px 12px 40px}
+h1{font-size:17px;margin:4px 0 10px;font-weight:600}h1 small{color:var(--mut);font-weight:400;font-size:12px}
+.paper{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:rgba(245,158,11,.16);color:var(--a);font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:2px}
+.badge{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;font-weight:600;font-size:14px;margin-bottom:12px}
+.badge .dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:none}
+.badge.live{background:rgba(34,197,94,.12);color:var(--g)}.badge.live .dot{animation:p 1.6s infinite}
+.badge.down{background:rgba(239,68,68,.14);color:var(--r)}.badge.stale{background:rgba(245,158,11,.14);color:var(--a)}
+.badge.load{background:var(--card);color:var(--mut)}
+.badge .sub{font-weight:400;color:var(--mut);font-size:12px;margin-left:auto;text-align:right}
+@keyframes p{50%{opacity:.35}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+@media(min-width:560px){.grid.six{grid-template-columns:repeat(3,1fr)}}
+.m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.m .k{color:var(--mut);font-size:12px}.m .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
+.m .s{color:var(--mut);font-size:12px;font-variant-numeric:tabular-nums}
+.pos{color:var(--g)}.neg{color:var(--r)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;background:#0e141b;border:1px solid var(--line);border-radius:10px;padding:2px}
+.seg button{background:none;border:0;color:var(--mut);padding:6px 10px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--acc);color:#fff}
+canvas{width:100%;height:190px;display:block;margin-top:8px}
+.chartmeta{color:var(--mut);font-size:12px;margin-top:4px;display:flex;justify-content:space-between}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{flex:1;min-width:70px}
+.list{margin-top:8px}
+.it{border-top:1px solid var(--line);padding:10px 0}.it:first-child{border-top:0}
+.it .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sym{color:var(--tx);font-weight:650;text-decoration:none}.sym:hover{text-decoration:underline}
+.side{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:2px}
+.side.short{background:rgba(239,68,68,.15);color:var(--r)}.side.long{background:rgba(34,197,94,.15);color:var(--g)}
+.lvl{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:6px}
+.lvl.info{background:rgba(59,130,246,.15);color:#60a5fa}.lvl.warning{background:rgba(245,158,11,.15);color:var(--a)}.lvl.error,.lvl.trade{background:rgba(239,68,68,.15);color:var(--r)}
+.lvl.trade{background:rgba(34,197,94,.15);color:var(--g)}
+.pnl{font-weight:650;font-variant-numeric:tabular-nums;text-align:right}
+.det{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 10px;color:var(--mut);font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
+.det b{color:var(--tx);font-weight:500}
+.empty{color:var(--mut);padding:14px 0;text-align:center}
+select{background:#0e141b;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+footer{color:var(--mut);font-size:12px;text-align:center;margin-top:18px;line-height:1.6}
+footer a{color:var(--mut)}
+.sv{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}
+@media(min-width:520px){.sv{grid-template-columns:repeat(4,1fr)}}
+.sv div{background:#0e141b;border:1px solid var(--line);border-radius:10px;padding:8px}
+.sv .k{color:var(--mut);font-size:11px}.sv .v{font-weight:650;font-size:16px;margin-top:2px}
+.note{color:var(--mut);font-size:12px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Binance Futures Paper Bot <span class="paper">PAPER</span><small id="strat"></small></h1>
+  <div id="badge" class="badge load"><span class="dot"></span><span id="btxt">Loading…</span><span class="sub" id="bsub"></span></div>
+  <div class="grid six">
+    <div class="m"><div class="k">Equity</div><div class="v" id="eq">–</div><div class="s" id="eqs"></div></div>
+    <div class="m"><div class="k">Wallet</div><div class="v" id="bal">–</div><div class="s" id="bals"></div></div>
+    <div class="m"><div class="k">Realized P&amp;L</div><div class="v" id="rp">–</div><div class="s" id="rps"></div></div>
+    <div class="m"><div class="k">Fees paid</div><div class="v" id="fe">–</div><div class="s" id="fes"></div></div>
+    <div class="m"><div class="k">Funding net</div><div class="v" id="fn">–</div><div class="s" id="fns"></div></div>
+    <div class="m"><div class="k">Open positions</div><div class="v" id="oc">–</div><div class="s" id="ocs"></div></div>
+  </div>
+  <div class="card" id="setcard">
+    <div class="row"><b style="font-size:14px">Settings</b><span class="note">read-only · paper defaults</span></div>
+    <div class="sv">
+      <div><div class="k">Leverage</div><div class="v" id="s_lev">–</div></div>
+      <div><div class="k">Take profit (net)</div><div class="v" id="s_tp">–</div></div>
+      <div><div class="k">Stop loss (net)</div><div class="v" id="s_sl">–</div></div>
+      <div><div class="k">Max positions</div><div class="v" id="s_max">–</div></div>
+      <div><div class="k">Universe size</div><div class="v" id="s_uni">–</div></div>
+      <div><div class="k">Exclude top volume</div><div class="v" id="s_ex">–</div></div>
+      <div><div class="k">Timeframe</div><div class="v" id="s_tf">–</div></div>
+      <div><div class="k">Today's P&amp;L <span id="today"></span></div><div class="v" id="s_today">–</div></div>
+    </div>
+    <div class="note" id="s_meta"></div>
+  </div>
+  <div class="card">
+    <div class="row"><b style="font-size:14px">Equity (USDT)</b>
+      <div class="seg" id="rng"><button data-r="3600">1h</button><button data-r="10800">3h</button><button data-r="0" class="on">All</button></div></div>
+    <canvas id="ch"></canvas>
+    <div class="chartmeta"><span id="cmin"></span><span id="cchg"></span><span id="cmax"></span></div>
+  </div>
+  <div class="card">
+    <div class="row">
+      <div class="seg tabs" id="tabs">
+        <button data-t="open" class="on">Open <span id="no"></span></button>
+        <button data-t="closed">Trades <span id="nc"></span></button>
+        <button data-t="signals">Signals <span id="ns"></span></button>
+        <button data-t="activity">Activity <span id="na"></span></button>
+      </div>
+      <select id="sort"><option value="pnl">Sort: P&amp;L</option><option value="new">Sort: Newest</option><option value="coin">Sort: Coin</option></select>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+  <footer>
+    <b>PAPER TRADING ONLY</b>: simulated positions, no real money, no API keys, no live orders.<br>
+    Snapshot pushed every ~2 min when data changes · page refreshes every 60 s · all times WIB (Asia/Jakarta)<br>
+    <span id="gen"></span><br>
+    <a href="https://github.com/dedkovic441-hub/binance-futures-dashboard">github.com/dedkovic441-hub/binance-futures-dashboard</a>
+  </footer>
+</div>
+<script>
+const RAW = "https://raw.githubusercontent.com/dedkovic441-hub/binance-futures-dashboard/main/data.json";
+const STALE_S = 12 * 60;
+let D = null, tab = "open", rng = 0;
+const $ = id => document.getElementById(id);
+const tz = {timeZone: "Asia/Jakarta"};
+const fT = (s, sec) => { if (!s) return "–"; const d = new Date(s); return d.toLocaleTimeString("en-GB", {...tz, hour: "2-digit", minute: "2-digit", ...(sec ? {second: "2-digit"} : {})}); };
+const fDT = s => { if (!s) return "–"; const d = new Date(s); return d.toLocaleDateString("en-GB", {...tz, day: "2-digit", month: "short"}) + " " + fT(s); };
+const n2 = v => v == null ? "–" : Number(v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const n4 = v => v == null ? "–" : Number(v).toLocaleString("en-US", {minimumFractionDigits: 4, maximumFractionDigits: 4});
+const sg = v => v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + n2(Math.abs(v));
+const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const px = v => { if (v == null) return "–"; const a = Math.abs(v); return a >= 1000 ? v.toFixed(1) : a >= 1 ? v.toFixed(4) : Number(v.toPrecision(5)).toString(); };
+const base = s => String(s || "").replace(/USDT$/, "");
+const link = s => `<a class="sym" target="_blank" rel="noopener" href="https://www.binance.com/en/futures/${encodeURIComponent(s)}">${base(s)}</a>`;
+const held = m => m == null ? "–" : m < 60 ? Math.round(m) + "m" : m < 1440 ? (m / 60).toFixed(1) + "h" : (m / 1440).toFixed(1) + "d";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const sideCls = s => (String(s || "").toLowerCase() === "short" ? "short" : "long");
+
+async function get(u) {
+  const r = await fetch(u + (u.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache: "no-store"});
+  if (!r.ok) throw new Error(r.status); return r.json();
+}
+async function load() {
+  const res = await Promise.allSettled([get("data.json"), get(RAW)]);
+  const ok = res.filter(r => r.status === "fulfilled").map(r => r.value).filter(d => d && d.generated_ts);
+  if (!ok.length) { if (!D) setBadge("stale", "Snapshot unavailable", "could not load data.json"); else render(); return; }
+  ok.sort((a, b) => b.generated_ts - a.generated_ts);
+  if (!D || ok[0].generated_ts >= D.generated_ts) D = ok[0];
+  render();
+}
+function setBadge(c, t, sub) { $("badge").className = "badge " + c; $("btxt").textContent = t; $("bsub").innerHTML = sub || ""; }
+function render() {
+  if (!D) return;
+  const age = Date.now() / 1000 - D.generated_ts, s = D.snapshot || {}, dm = D.daemon || {};
+  const ago = age < 90 ? Math.round(age) + "s ago" : Math.round(age / 60) + " min ago";
+  const st = (dm.state || "").toUpperCase();
+  if (age > STALE_S) setBadge("stale", "Snapshot is stale", `last update ${fDT(D.generated_at)} WIB<br>${ago}`);
+  else if (!dm.alive) setBadge("down", "Bot process stopped", `${st || "unknown"} at ${fT(D.generated_at)} WIB push<br>${ago}`);
+  else if (st === "PAUSED") setBadge("stale", "PAPER · paused", `updated ${fT(D.generated_at, 1)} WIB<br>${ago}`);
+  else if (st === "IDLE" || st === "STOPPING") setBadge("stale", "PAPER · " + st.toLowerCase(), `updated ${fT(D.generated_at, 1)} WIB<br>${ago}`);
+  else setBadge("live", "LIVE · PAPER running", `updated ${fT(D.generated_at, 1)} WIB<br>${ago}`);
+  $("strat").textContent = s.strategy ? " · " + s.strategy : "";
+  $("eq").textContent = n2(s.equity_usdt);
+  const tot = (s.equity_usdt ?? 0) - (s.starting_balance_usdt || 0);
+  $("eqs").innerHTML = `<span class="${cls(tot)}">${sg(tot)}</span> vs start ${n2(s.starting_balance_usdt)}`;
+  $("bal").textContent = n2(s.wallet_usdt);
+  $("bals").innerHTML = `unrealized <span class="${cls(s.unrealized_usdt)}">${sg(s.unrealized_usdt)}</span>`;
+  $("rp").innerHTML = `<span class="${cls(s.realized_usdt)}">${sg(s.realized_usdt)}</span>`;
+  $("rps").innerHTML = `today <span class="${cls(s.today_realized_usdt)}">${sg(s.today_realized_usdt)}</span>`;
+  $("fe").textContent = n2(s.fees_usdt);
+  $("fes").textContent = "taker fees (sim)";
+  $("fn").innerHTML = `<span class="${cls(s.funding_net_usdt)}">${s.funding_net_usdt == null ? "–" : (s.funding_net_usdt > 0 ? "+" : s.funding_net_usdt < 0 ? "−" : "") + n4(Math.abs(s.funding_net_usdt))}</span>`;
+  $("fns").textContent = "settled funding";
+  $("oc").textContent = `${s.open_count ?? 0} / ${s.max_open ?? "?"}`;
+  const stt = D.stats || {};
+  $("ocs").textContent = `${stt.closed_trades ?? 0} closed · win ${stt.win_rate ?? "–"}%`;
+  $("no").textContent = `(${(D.open || []).length})`;
+  $("nc").textContent = `(${(D.trades || D.closed || []).length})`;
+  $("ns").textContent = `(${(D.signals || []).length})`;
+  $("na").textContent = `(${(D.activity || []).length})`;
+  $("gen").textContent = `data generated ${fDT(D.generated_at)} WIB · feed heartbeat ${fT(dm.heartbeat_wib, 1)} WIB`;
+  const cf = D.settings || {};
+  $("s_lev").textContent = cf.leverage ? cf.leverage + "×" : "–";
+  $("s_tp").textContent = cf.take_profit_usdt ? "+$" + cf.take_profit_usdt : "–";
+  $("s_sl").textContent = cf.stop_loss_usdt ? "−$" + cf.stop_loss_usdt : "–";
+  $("s_max").textContent = cf.max_positions ?? "–";
+  $("s_uni").textContent = (cf.universe_live ?? cf.universe_size ?? "–") + (cf.universe_size && cf.universe_live && cf.universe_live !== cf.universe_size ? " / " + cf.universe_size : "");
+  $("s_ex").textContent = cf.exclude_top_volume != null ? "top " + cf.exclude_top_volume : "–";
+  $("s_tf").textContent = cf.interval || "–";
+  $("today").textContent = s.today_wib ? "(" + String(s.today_wib).slice(5) + ")" : "";
+  $("s_today").innerHTML = `<span class="${cls(s.today_pnl_usdt)}">${sg(s.today_pnl_usdt)}</span>`;
+  $("s_meta").textContent = `Heikin-Ashi colour flip · isolated margin · fee ${(cf.taker_fee_rate != null ? (cf.taker_fee_rate * 100).toFixed(2) + "%" : "–")} taker · start ${n2(s.starting_balance_usdt)} USDT · ${dm.universe_live ?? 0} live marks`;
+  drawChart(); renderList();
+}
+function renderList() {
+  const by = $("sort").value, L = $("list");
+  $("sort").style.display = (tab === "open" || tab === "closed") ? "" : "none";
+  if (tab === "signals") {
+    const rows = (D.signals || []).slice();
+    if (!rows.length) { L.innerHTML = `<div class="empty">No strategy signals yet. The 15m Heikin-Ashi flip is evaluated when a candle closes.</div>`; return; }
+    L.innerHTML = rows.map(r => `
+      <div class="it"><div class="top"><div>${link(r.symbol)}${r.side ? `<span class="side ${sideCls(r.side)}">${esc((r.side || "").toUpperCase())}</span>` : ""}</div>
+        <div class="pnl">${esc(r.action || "")}</div></div>
+        <div class="det"><span style="grid-column:span 2">${esc(r.reason || "")}</span><span>At <b>${fDT(r.created_wib)}</b></span></div></div>`).join("");
+    return;
+  }
+  if (tab === "activity") {
+    const rows = (D.activity || []).slice();
+    if (!rows.length) { L.innerHTML = `<div class="empty">No runtime activity recorded yet.</div>`; return; }
+    L.innerHTML = rows.map(r => `
+      <div class="it"><div class="top"><div><span class="lvl ${(r.level || "info").toLowerCase()}">${esc((r.level || "INFO").toUpperCase())}</span>${esc(r.message || "")}</div>
+        <div class="s" style="color:var(--mut);font-size:12px;white-space:nowrap">${fDT(r.created_wib)}</div></div></div>`).join("");
+    return;
+  }
+  let rows = (tab === "open" ? (D.open || []) : (D.trades || D.closed || [])).slice();
+  const tk = r => Date.parse(tab === "open" ? r.opened_wib : (r.closed_wib || r.created_wib)) || 0;
+  if (by === "pnl") rows.sort((a, b) => (b.pnl_usdt || 0) - (a.pnl_usdt || 0));
+  else if (by === "new") rows.sort((a, b) => tk(b) - tk(a));
+  else rows.sort((a, b) => String(a.symbol||"").localeCompare(String(b.symbol||"")));
+  if (!rows.length) { L.innerHTML = `<div class="empty">No ${tab === "open" ? "open positions" : "paper trades"} yet</div>`; return; }
+  L.innerHTML = rows.map(r => tab === "open" ? `
+    <div class="it"><div class="top"><div>${link(r.symbol)}<span class="side ${sideCls(r.side)}">${esc((r.side || "").toUpperCase())}</span></div>
+      <div class="pnl ${cls(r.pnl_usdt)}">${sg(r.pnl_usdt)} USDT<br><small>${r.pnl_pct == null ? "" : sg(r.pnl_pct) + "%"}</small></div></div>
+      <div class="det"><span>Entry <b>${px(r.entry)}</b></span><span>Mark <b>${px(r.mark)}</b></span><span>Qty <b>${px(r.quantity)}</b></span>
+      <span>Opened <b>${fDT(r.opened_wib)}</b></span><span>Held <b>${held(r.held_min)}</b></span><span>${r.leverage ?? ""}x · margin ${n2(r.margin_usdt)}</span>
+      <span>Funding <b class="${cls(r.funding_usdt)}">${r.funding_usdt == null ? "–" : sg(r.funding_usdt)}</b></span>
+      <span>Fee <b>${n4(r.entry_fee)}</b></span><span>Notional <b>${n2(r.notional_usdt)}</b></span></div></div>` : `
+    <div class="it"><div class="top"><div>${link(r.symbol)}<span class="side ${sideCls(r.side)}">${esc((r.side || "").toUpperCase())}</span>
+      <span class="side ${r.action === "OPEN" ? "long" : "short"}">${esc(r.action || "")}</span></div>
+      <div class="pnl ${cls(r.pnl_usdt)}">${r.action === "OPEN" ? n2(r.price) : sg(r.pnl_usdt) + " USDT"}<br><small>${esc(r.reason || "")}</small></div></div>
+      <div class="det"><span>${r.entry ? "Entry <b>" + px(r.entry) + "</b>" : "Price <b>" + px(r.price) + "</b>"}</span>
+      <span>${r.exit ? "Exit <b>" + px(r.exit) + "</b>" : "Qty <b>" + px(r.quantity) + "</b>"}</span>
+      <span>Fee <b>${n4(r.fee)}</b></span>
+      <span style="grid-column:span 2">Time <b>${fDT(r.closed_wib || r.created_wib)}</b></span>
+      <span>${r.funding_usdt ? "Fund " + sg(r.funding_usdt) : ""}</span></div></div>`).join("");
+}
+function drawChart() {
+  const cv = $("ch"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  let pts = (D.history || []).map(p => [p[0], p[1]]);
+  const last = [D.generated_ts, (D.snapshot || {}).equity_usdt];
+  if (last[1] != null && (!pts.length || pts[pts.length - 1][0] < last[0])) pts.push(last);
+  if (rng) { const t0 = last[0] - rng; pts = pts.filter(p => p[0] >= t0); }
+  if (pts.length < 2) { g.fillStyle = "#8b98a5"; g.font = "13px sans-serif"; g.fillText("Not enough history yet", 10, H / 2); ["cmin","cmax","cchg"].forEach(i => $(i).textContent = ""); return; }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = xs[0], x1 = xs[xs.length - 1]; let y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = (y1 - y0) * .1 || 1; y0 -= pad; y1 += pad;
+  const Lft = 44, R = 6, T = 6, B = 18, X = t => Lft + (t - x0) / (x1 - x0 || 1) * (W - Lft - R), Y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  g.strokeStyle = "#222b36"; g.fillStyle = "#8b98a5"; g.font = "10px sans-serif"; g.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) { const v = y0 + (y1 - y0) * i / 3, y = Y(v); g.beginPath(); g.moveTo(Lft, y); g.lineTo(W - R, y); g.stroke(); g.fillText(v.toFixed(0), 2, y + 3); }
+  for (let i = 0; i <= 3; i++) { const t = x0 + (x1 - x0) * i / 3; const s = new Date(t * 1000).toISOString();
+    const lab = (x1 - x0) > 86400 ? fDT(s) : fT(s); g.textAlign = i === 0 ? "left" : i === 3 ? "right" : "center"; g.fillText(lab, X(t), H - 4); }
+  g.textAlign = "left";
+  const sb = D.snapshot.starting_balance_usdt;
+  if (sb && sb > y0 && sb < y1) { g.setLineDash([4, 4]); g.strokeStyle = "#4b5563"; g.beginPath(); g.moveTo(Lft, Y(sb)); g.lineTo(W - R, Y(sb)); g.stroke(); g.setLineDash([]); }
+  const up = ys[ys.length - 1] >= ys[0], col = up ? "#22c55e" : "#ef4444";
+  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1])));
+  g.strokeStyle = col; g.lineWidth = 2; g.stroke();
+  g.lineTo(X(x1), H - B); g.lineTo(X(x0), H - B); g.closePath();
+  const gr = g.createLinearGradient(0, T, 0, H - B); gr.addColorStop(0, up ? "rgba(34,197,94,.25)" : "rgba(239,68,68,.25)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = gr; g.fill();
+  const ch = ys[ys.length - 1] - ys[0];
+  $("cmin").textContent = "min " + n2(Math.min(...ys)); $("cmax").textContent = "max " + n2(Math.max(...ys));
+  $("cchg").innerHTML = `<span class="${cls(ch)}">${sg(ch)}</span> in range`;
+}
+$("rng").onclick = e => { const b = e.target.closest("button"); if (!b) return; rng = +b.dataset.r; [...$("rng").children].forEach(x => x.classList.toggle("on", x === b)); if (D) drawChart(); };
+$("tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.t; [...$("tabs").children].forEach(x => x.classList.toggle("on", x === b)); if (D) renderList(); };
+$("sort").onchange = () => D && renderList();
+window.addEventListener("resize", () => D && drawChart());
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+load(); setInterval(load, 60000); setInterval(() => D && render(), 15000);
+</script>
+</body>
+</html>
